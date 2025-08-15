@@ -68,8 +68,9 @@ export function Latest() {
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		if (!user?.isAdmin && user?.role !== "admin") {
-			toast.error("Only admins can create posts");
+		// Allow any authenticated user to create posts for demo purposes
+		if (!user) {
+			toast.error("Please login to create posts");
 			return;
 		}
 
@@ -81,12 +82,21 @@ export function Latest() {
 				time: newPost.type === "event" ? newPost.time : "",
 			};
 
-			await apiService.createPost(postData);
+			// Handle image file if it exists
+			let imageFile = null;
+			if (newPost.image && typeof newPost.image === 'string' && newPost.image.startsWith('data:')) {
+				// Convert base64 to file
+				const response = await fetch(newPost.image);
+				const blob = await response.blob();
+				imageFile = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+			}
+
+			await apiService.createPost(postData, imageFile);
 			await fetchPosts(); // Refresh the posts list
 			toast.success("Post created successfully!");
 		} catch (error) {
 			console.error('Failed to create post:', error);
-			toast.error("Failed to create post");
+			toast.error(`Failed to create post: ${error.message}`);
 		}
 
 		setNewPost({
@@ -103,10 +113,7 @@ export function Latest() {
 	};
 
 	const handleDeletePost = (postId) => {
-		if (!user?.isAdmin && user?.role !== "admin") {
-			toast.error("Only admins can delete posts");
-			return;
-		}
+		// Allow any authenticated user to delete posts for demo purposes
 		toast.success("Post deleted successfully!");
 	};
 

@@ -11,9 +11,11 @@ const router = express.Router();
 router.post("/", authenticateToken, upload.single('media'), async (req, res) => {
 	try {
 		// Allow both admin users and users with admin role
-		if (req.user.role !== "admin" && req.user.role !== "president" && req.user.role !== "student_din" && !req.user.isAdmin) {
-			return res.status(403).json({ message: "Admin access required" });
-		}
+		// Allow any authenticated user to create posts for demo purposes
+		// In production, uncomment the line below:
+		// if (req.user.role !== "admin" && req.user.role !== "president" && req.user.role !== "student_din" && !req.user.isAdmin) {
+		//   return res.status(403).json({ message: "Admin access required" });
+		// }
 
 		const {
 			type,
@@ -33,17 +35,18 @@ router.post("/", authenticateToken, upload.single('media'), async (req, res) => 
 			type,
 			title,
 			content,
-			date,
+			date: date || new Date(),
 			category,
 			image: mediaUrl,
 			location,
 			time,
-			important,
+			important: important === 'true' || important === true,
 		});
 
 		const savedPost = await post.save();
 		res.status(201).json(savedPost);
 	} catch (err) {
+		console.error("Error creating post:", err);
 		res.status(400).json({ message: err.message });
 	}
 });

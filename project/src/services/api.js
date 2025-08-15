@@ -108,27 +108,39 @@ class ApiService {
   }
 
   async createClub(clubData, imageFile = null) {
-    const formData = new FormData();
-    
-    // Add club data
-    Object.keys(clubData).forEach(key => {
-      if (clubData[key] !== null && clubData[key] !== undefined) {
-        formData.append(key, clubData[key]);
+    try {
+      const formData = new FormData();
+      
+      // Add club data
+      Object.keys(clubData).forEach(key => {
+        if (clubData[key] !== null && clubData[key] !== undefined) {
+          formData.append(key, clubData[key]);
+        }
+      });
+      
+      // Add image file if provided
+      if (imageFile) {
+        formData.append('clubImage', imageFile);
       }
-    });
-    
-    // Add image file if provided
-    if (imageFile) {
-      formData.append('clubImage', imageFile);
-    }
 
-    return this.request('/clubs', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${this.getAuthToken()}`,
-      },
-    });
+      const response = await fetch(`${this.baseURL}/clubs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create club failed:', error);
+      throw error;
+    }
   }
 
   async getClubMembers(clubId) {
@@ -148,27 +160,39 @@ class ApiService {
   }
 
   async createPost(postData, mediaFile = null) {
-    const formData = new FormData();
-    
-    // Add post data
-    Object.keys(postData).forEach(key => {
-      if (postData[key] !== null && postData[key] !== undefined) {
-        formData.append(key, postData[key]);
+    try {
+      const formData = new FormData();
+      
+      // Add post data
+      Object.keys(postData).forEach(key => {
+        if (postData[key] !== null && postData[key] !== undefined) {
+          formData.append(key, postData[key]);
+        }
+      });
+      
+      // Add media file if provided
+      if (mediaFile) {
+        formData.append('media', mediaFile);
       }
-    });
-    
-    // Add media file if provided
-    if (mediaFile) {
-      formData.append('media', mediaFile);
-    }
 
-    return this.request('/posts', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'Authorization': `Bearer ${this.getAuthToken()}`,
-      },
-    });
+      const response = await fetch(`${this.baseURL}/posts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create post failed:', error);
+      throw error;
+    }
   }
 
   // Election endpoints
@@ -177,30 +201,41 @@ class ApiService {
   }
 
   async createElection(electionData, files = []) {
-    const formData = new FormData();
-    
-    // Add election data
-    Object.keys(electionData).forEach(key => {
-      if (key === 'candidates') {
-        formData.append(key, JSON.stringify(electionData[key]));
-      } else {
-        formData.append(key, electionData[key]);
-      }
-    });
-    
-    // Add candidate images
-    files.forEach((file, index) => {
-      formData.append('candidateImages', file);
-    });
+    try {
+      const formData = new FormData();
+      
+      // Add election data
+      Object.keys(electionData).forEach(key => {
+        if (key === 'candidates') {
+          formData.append(key, JSON.stringify(electionData[key]));
+        } else if (electionData[key] !== null && electionData[key] !== undefined) {
+          formData.append(key, electionData[key]);
+        }
+      });
+      
+      // Add candidate images
+      files.forEach((file, index) => {
+        formData.append('candidateImages', file);
+      });
 
-    return this.request('/elections', {
-      method: 'POST',
-      body: formData,
-      headers: {
-        // Don't set Content-Type, let browser set it with boundary
-        'Authorization': `Bearer ${this.getAuthToken()}`,
-      },
-    });
+      const response = await fetch(`${this.baseURL}/elections`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.getAuthToken()}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Create election failed:', error);
+      throw error;
+    }
   }
 
   async voteInElection(electionId, candidateId) {

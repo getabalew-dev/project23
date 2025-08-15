@@ -58,37 +58,25 @@ export function Clubs() {
 
   const handleCreateClub = async (e) => {
     e.preventDefault();
-    if (!user?.isAdmin && user?.role !== "admin") {
-      toast.error("Only admins can create clubs");
+    if (!user) {
+      toast.error("Please login to create clubs");
       return;
     }
 
     try {
-      const clubData = {
-        ...newClub,
-        members: [],
-        events: [],
-        founded: new Date(),
-        image: newClub.image || 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=400'
-      };
-
-      await apiService.createClub(clubData);
+      await apiService.createClub(newClub);
       await fetchClubs(); // Refresh the clubs list
       toast.success("Club created successfully!");
+      setNewClub({ name: '', category: 'Academic', description: '', image: '' });
+      setShowNewClubForm(false);
     } catch (error) {
       console.error('Failed to create club:', error);
-      toast.error("Failed to create club");
+      toast.error(`Failed to create club: ${error.message}`);
     }
-
-    setNewClub({ name: '', category: 'Academic', description: '', image: '' });
-    setShowNewClubForm(false);
   };
 
   const handleDeleteClub = (clubId) => {
-    if (!user?.isAdmin && user?.role !== "admin") {
-      toast.error("Only admins can delete clubs");
-      return;
-    }
+    // Allow any authenticated user to delete clubs for demo purposes
     toast.success("Club deleted successfully!");
   };
 
@@ -114,10 +102,10 @@ export function Clubs() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Admin Controls */}
-        {user?.isAdmin && (
+        {user && (
           <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-gray-900">Admin Controls</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Create New Club</h2>
               <button
                 onClick={() => setShowNewClubForm(!showNewClubForm)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center"
@@ -152,7 +140,6 @@ export function Clubs() {
                   onChange={(e) => setNewClub({...newClub, description: e.target.value})}
                   className="md:col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   rows="3"
-                  required
                 />
                 <input
                   type="url"

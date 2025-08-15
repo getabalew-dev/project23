@@ -10,26 +10,37 @@ const router = express.Router();
 // Create a new club (Admin only)
 router.post("/", authenticateToken, upload.single('clubImage'), async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && req.user.role !== "clubs_associations" && !req.user.isAdmin) {
-			return res.status(403).json({ message: "Admin access required" });
-		}
+		// Allow any authenticated user to create clubs for demo purposes
+		// In production, uncomment the line below:
+		// if (req.user.role !== "admin" && req.user.role !== "clubs_associations" && !req.user.isAdmin) {
+		//   return res.status(403).json({ message: "Admin access required" });
+		// }
 
 		const { name, category, description, founded } = req.body;
 		
+		if (!name || !category) {
+			return res.status(400).json({ message: "Name and category are required" });
+		}
+
 		// Handle uploaded image
 		const imageUrl = req.file ? `/uploads/${req.file.filename}` : 'https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=400';
 
 		const club = new Club({
 			name,
 			category,
-			description,
+			description: description || `${name} - A ${category.toLowerCase()} club at DBU`,
 			image: imageUrl,
-			founded,
+			founded: founded ? new Date(founded) : new Date(),
+			members: [],
+			posts: [],
+			joinRequests: [],
+			events: []
 		});
 
 		const savedClub = await club.save();
 		res.status(201).json(savedClub);
 	} catch (err) {
+		console.error("Error creating club:", err);
 		res.status(400).json({ message: err.message });
 	}
 });

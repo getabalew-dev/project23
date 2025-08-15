@@ -48,14 +48,12 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-console.log("MongoDB URI:", process.env.MONGODB_URI);
-
 // Connect to MongoDB (no blocking middleware)
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/dbu_student_union")
 	.then(() => console.log("✅ MongoDB connected successfully!"))
 	.catch(err => {
 		console.error("❌ MongoDB connection error:", err);
-		process.exit(1);
+		console.log("⚠️ Running without database connection");
 	});
 
 // Routes

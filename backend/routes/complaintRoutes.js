@@ -18,16 +18,18 @@ router.post("/", authenticateToken, async (req, res) => {
 
 		// Input validation
 		if (!title || !description || !category || !branch) {
-			return res.status(400).json({ message: "All fields are required" });
+			return res.status(400).json({ message: "Title, description, and category are required" });
 		}
 
 		const complaint = new Complaint({
 			title,
 			description,
 			category,
-			branch,
-			priority,
-			submittedBy: req.user._id,
+			branch: branch || category,
+			priority: priority || "medium",
+			submittedBy: req.user._id || req.user.id,
+			status: "submitted",
+			responses: []
 		});
 
 		const savedComplaint = await complaint.save();
@@ -35,7 +37,7 @@ router.post("/", authenticateToken, async (req, res) => {
 		res.status(201).json(savedComplaint);
 	} catch (err) {
 		logError(err);
-		res.status(500).json({ message: "Error creating complaint" });
+		res.status(500).json({ message: "Error creating complaint", error: err.message });
 	}
 });
 

@@ -89,31 +89,27 @@ export function Complaints() {
 			return;
 		}
 
-		const caseId = generateCaseId();
 		try {
 			const complaintData = {
 				...newComplaintForm,
-				submittedBy: user?.id,
 				branch: newComplaintForm.category,
 			};
 
 			await apiService.createComplaint(complaintData);
 			await fetchComplaints(); // Refresh the complaints list
-			toast.success(`Complaint submitted. Case ID: ${caseId}`);
+			toast.success("Complaint submitted successfully!");
+			setShowNewComplaint(false);
+			setNewComplaintForm({
+				title: "",
+				description: "",
+				category: "",
+				priority: "medium",
+				evidence: [],
+			});
 		} catch (error) {
 			console.error('Failed to submit complaint:', error);
-			toast.error("Failed to submit complaint");
-			return;
+			toast.error(`Failed to submit complaint: ${error.message}`);
 		}
-
-		setShowNewComplaint(false);
-		setNewComplaintForm({
-			title: "",
-			description: "",
-			category: "",
-			priority: "medium",
-			evidence: [],
-		});
 	};
 
 	const handleSendResponse = (complaintId) => {
