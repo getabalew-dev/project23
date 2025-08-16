@@ -31,14 +31,25 @@ if (!fs.existsSync(uploadsDir)) {
 	fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-// CORS — cleaned up origins
-const allowedOrigins = process.env.CORS_ORIGINS
-	? process.env.CORS_ORIGINS.split(",").map(url => url.trim())
-	: ["http://localhost:5173", "http://localhost:3000"];
-
+// CORS configuration - more permissive for development
 app.use(cors({
-	origin: allowedOrigins,
-	credentials: true
+	origin: function (origin, callback) {
+		// Allow requests with no origin (like mobile apps or curl requests)
+		if (!origin) return callback(null, true);
+		
+		const allowedOrigins = process.env.CORS_ORIGINS
+			? process.env.CORS_ORIGINS.split(",").map(url => url.trim())
+			: ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"];
+		
+		if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+			callback(null, true);
+		} else {
+			callback(new Error('Not allowed by CORS'));
+		}
+	},
+	credentials: true,
+	methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+	allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Body parsers
@@ -48,13 +59,33 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Connect to MongoDB (no blocking middleware)
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/dbu_student_union")
+// Connect to MongoDB with better error handling
+const connectDB = async () => {
+	try {
+		const conn = await mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/dbu_student_union", {
+			useNewUrlParser: true,
+			useUnifiedTopology: true,
+		});
+		console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+	} catch (error) {
+		console.error("❌ MongoDB connection error:", error.message);
+		// Don't exit process, continue with mock data
+		console.log("⚠️ Running in offline mode with mock data");
+	}
+};
+
+connectDB()
 	.then(() => console.log("✅ MongoDB connected successfully!"))
 	.catch(err => {
 		console.error("❌ MongoDB connection error:", err);
 		console.log("⚠️ Running without database connection");
 	});
+
+// Add request logging middleware for debugging
+app.use((req, res, next) => {
+	console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+	next();
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -79,6 +110,23 @@ app.get("/api/health", (req, res) => {
 	});
 });
 
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+	res.status(404).json({
+		message: `API endpoint ${req.originalUrl} not found`,
+		availableEndpoints: [
+			'/api/auth',
+			'/api/users',
+			'/api/complaints',
+			'/api/clubs',
+			'/api/posts',
+			'/api/elections',
+			'/api/contact',
+			'/api/stats'
+		]
+	});
+});
+
 // Error handler
 app.use((error, req, res, next) => {
 	console.error("Server Error:", error);
@@ -91,4 +139,6 @@ app.use((error, req, res, next) => {
 // Start server
 app.listen(port, () => {
 	console.log(`🚀 Server is running on http://localhost:${port}`);
+	console.log(`📊 Health check available at http://localhost:${port}/api/health`);
+	console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 class ApiService {
   constructor() {
@@ -9,6 +9,7 @@ class ApiService {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     return user.token || null;
   }
+
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getAuthToken();
@@ -22,7 +23,8 @@ class ApiService {
       ...options,
     };
 
-    if (config.body && typeof config.body === 'object') {
+    // Don't stringify FormData
+    if (config.body && !(config.body instanceof FormData) && typeof config.body === 'object') {
       config.body = JSON.stringify(config.body);
     }
 
@@ -30,13 +32,30 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       return await response.json();
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error(`API request failed for ${endpoint}:`, error);
+      
+      // Handle network errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Unable to connect to server. Please check if the backend is running.');
+      }
+      
       throw error;
+    }
+  }
+
+  // Health check method
+  async healthCheck() {
+    try {
+      const response = await fetch(`${this.baseURL.replace('/api', '')}/api/health`);
+      return await response.json();
+    } catch (error) {
+      throw new Error('Backend server is not responding');
     }
   }
 
@@ -70,6 +89,7 @@ class ApiService {
   async getProfile() {
     return this.request('/auth/profile');
   }
+
   // Complaint endpoints
   async getComplaints() {
     return this.request('/complaints');
@@ -123,10 +143,11 @@ class ApiService {
         formData.append('clubImage', imageFile);
       }
 
+      const token = this.getAuthToken();
       const response = await fetch(`${this.baseURL}/clubs`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: formData,
       });
@@ -175,10 +196,11 @@ class ApiService {
         formData.append('media', mediaFile);
       }
 
+      const token = this.getAuthToken();
       const response = await fetch(`${this.baseURL}/posts`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: formData,
       });
@@ -218,10 +240,11 @@ class ApiService {
         formData.append('candidateImages', file);
       });
 
+      const token = this.getAuthToken();
       const response = await fetch(`${this.baseURL}/elections`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: formData,
       });
@@ -270,6 +293,11 @@ class ApiService {
       method: 'POST',
       body: contactData,
     });
+  }
+
+  // Stats endpoints
+  async getStats() {
+    return this.request('/stats');
   }
 }
 
