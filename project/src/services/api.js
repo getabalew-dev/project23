@@ -164,6 +164,12 @@ class ApiService {
     }
   }
 
+  async deleteClub(clubId) {
+    return this.request(`/clubs/${clubId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getClubMembers(clubId) {
     return this.request(`/clubs/${clubId}/members`);
   }
@@ -215,6 +221,12 @@ class ApiService {
       console.error('Create post failed:', error);
       throw error;
     }
+  }
+
+  async deletePost(postId) {
+    return this.request(`/posts/${postId}`, {
+      method: 'DELETE',
+    });
   }
 
   // Election endpoints

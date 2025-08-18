@@ -44,9 +44,18 @@ function AppContent() {
 			<Layout>
 				<Routes>
 					{/* Public Routes */}
-					<Route path="/" element={<Home />} />
-					<Route path="/about" element={<About />} />
-					<Route path="/contact" element={<Contact />} />
+					<Route 
+						path="/" 
+						element={user ? <Navigate to="/dashboard" replace /> : <Home />} 
+					/>
+					<Route 
+						path="/about" 
+						element={user ? <Navigate to="/dashboard" replace /> : <About />} 
+					/>
+					<Route 
+						path="/contact" 
+						element={user ? <Navigate to="/dashboard" replace /> : <Contact />} 
+					/>
 
 					{/* Auth Route */}
 					<Route

@@ -100,6 +100,13 @@ export function Elections() {
       return;
     }
 
+    // Check if user has already voted
+    const election = elections.find(e => e._id === electionId);
+    if (election && hasUserVoted(election)) {
+      toast.error("You have already voted in this election");
+      return;
+    }
+
     try {
       setVotingFor(candidateId);
       
@@ -118,7 +125,7 @@ export function Elections() {
                 : candidate
             ),
             totalVotes: election.totalVotes + 1,
-            voters: [...election.voters, user._id || user.id]
+            voters: [...(election.voters || []), user._id || user.id]
           };
         }
         return election;
@@ -242,7 +249,9 @@ export function Elections() {
   };
 
   const hasUserVoted = (election) => {
-    return election.voters && election.voters.includes(user?._id || user?.id);
+    if (!user || !election.voters) return false;
+    const userId = user._id || user.id;
+    return election.voters.includes(userId);
   };
 
   return (
@@ -562,7 +571,7 @@ export function Elections() {
                               <button
                                 onClick={() => handleVote(election._id, candidate._id)}
                                 disabled={votingFor === candidate._id}
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center"
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center disabled:cursor-not-allowed"
                               >
                                 <Vote className="w-4 h-4 mr-2" />
                                 {votingFor === candidate._id ? 'Voting...' : 'Vote'}

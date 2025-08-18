@@ -115,28 +115,19 @@ export function Complaints() {
 	const handleSendResponse = (complaintId) => {
 		if (!responseMessage.trim()) return;
 
-		const updatedComplaints = complaints.map((complaint) => {
-			if (complaint.id === complaintId) {
-				return {
-					...complaint,
-					status: "under_review",
-					responses: [
-						...complaint.responses,
-						{
-							id: `resp_${Date.now()}`,
-							author: user?.name || "Admin",
-							message: responseMessage,
-							timestamp: new Date(),
-						},
-					],
-				};
+		const sendResponse = async () => {
+			try {
+				await apiService.addComplaintResponse(complaintId, responseMessage);
+				await fetchComplaints(); // Refresh complaints
+				toast.success("Response sent and complaint resolved");
+				setResponseMessage("");
+			} catch (error) {
+				console.error('Failed to send response:', error);
+				toast.error(`Failed to send response: ${error.message}`);
 			}
-			return complaint;
-		});
+		};
 
-		setComplaints(updatedComplaints);
-		toast.success("Response sent");
-		setResponseMessage("");
+		sendResponse();
 	};
 
 	const handleDocumentUpload = (e) => {
@@ -160,20 +151,20 @@ export function Complaints() {
 		setShowDocumentUpload(false);
 	};
 
-	const resolveComplaint = (complaintId) => {
-		if (!user?.isAdmin && user?.role !== "admin") {
+	const resolveComplaint = async (complaintId) => {
+		if (!user?.isAdmin) {
 			toast.error("Only admins can resolve complaints");
 			return;
 		}
 
-		const updatedComplaints = complaints.map((complaint) =>
-			complaint.id === complaintId
-				? { ...complaint, status: "resolved" }
-				: complaint
-		);
-
-		setComplaints(updatedComplaints);
-		toast.success("Complaint resolved successfully");
+		try {
+			await apiService.resolveComplaint(complaintId);
+			await fetchComplaints(); // Refresh complaints
+			toast.success("Complaint resolved successfully");
+		} catch (error) {
+			console.error('Failed to resolve complaint:', error);
+			toast.error(`Failed to resolve complaint: ${error.message}`);
+		}
 	};
 
 	const getStatusIcon = (status) => {
@@ -434,95 +425,20 @@ export function Complaints() {
 				) : (
 					<div className="space-y-4">
 						{filteredComplaints.map((complaint) => (
-							<div
-								key={complaint.id}
-								className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-								<div className="flex justify-between">
-									<div>
-										<h3 className="text-lg font-semibold text-gray-900">
-											{complaint.title}
-										</h3>
-										<p className="text-gray-600">{complaint.description}</p>
-										<div className="flex gap-2 mt-2 text-sm">
-											<span
-												className={`px-2 py-1 rounded-full flex items-center ${getStatusColor(
-													complaint.status
-												)}`}>
-												{getStatusIcon(complaint.status)}{" "}
-												<span className="ml-1">
-													{complaint.status.replace("_", " ")}
-												</span>
-											</span>
-											<span
-												className={`px-2 py-1 rounded-full ${getPriorityColor(
-													complaint.priority
-												)}`}>
-												{complaint.priority} priority
-											</span>
-											<span className="text-gray-500">
-												{new Date(complaint.submittedAt).toLocaleDateString()}
-											</span>
-										</div>
-									</div>
-									<div className="flex items-center space-x-2">
-										{user?.isAdmin && complaint.status !== "resolved" && (
-											<button
-												onClick={() => resolveComplaint(complaint.id)}
-												className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
-												Resolve
-											</button>
-										)}
-										<button
-											className="text-blue-600 hover:underline"
-											onClick={() =>
-												setSelectedComplaint(
-													selectedComplaint === complaint.id
-														? null
-														: complaint.id
-												)
-											}>
-											{selectedComplaint === complaint.id ? "Hide" : "Details"}
-										</button>
-									</div>
-								</div>
-
-								{selectedComplaint === complaint.id && (
-									<div className="mt-4 border-t pt-4">
-										<h4 className="font-semibold text-gray-800 mb-2">
-											Responses:
-										</h4>
-										{complaint.responses &&
-											complaint.responses.map((r) => (
-												<div key={r.id} className="bg-gray-50 rounded p-3 mb-2">
-													<div className="flex justify-between text-sm">
-														<span className="font-medium">{r.author}</span>
-														<span className="text-gray-500">
-															{new Date(r.timestamp).toLocaleDateString()}
-														</span>
-													</div>
-													<p className="text-gray-700 mt-1">{r.message}</p>
-												</div>
-											))}
-
-										{user?.isAdmin && (
-											<div className="flex gap-2 mt-4">
-												<input
-													type="text"
-													value={responseMessage}
-													onChange={(e) => setResponseMessage(e.target.value)}
-													className="flex-1 border border-gray-300 rounded px-3 py-2"
-													placeholder="Write a response..."
-												/>
-												<button
-													onClick={() => handleSendResponse(complaint.id)}
-													className="bg-blue-600 text-white px-4 py-2 rounded">
-													<Send className="w-4 h-4" />
-												</button>
-											</div>
-										)}
-									</div>
-								)}
-							</div>
+							<ComplaintCard
+								key={complaint._id || complaint.id}
+								complaint={complaint}
+								user={user}
+								selectedComplaint={selectedComplaint}
+								setSelectedComplaint={setSelectedComplaint}
+								responseMessage={responseMessage}
+								setResponseMessage={setResponseMessage}
+								handleSendResponse={handleSendResponse}
+								resolveComplaint={resolveComplaint}
+								getStatusIcon={getStatusIcon}
+								getStatusColor={getStatusColor}
+								getPriorityColor={getPriorityColor}
+							/>
 						))}
 					</div>
 				)}

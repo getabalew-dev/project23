@@ -68,9 +68,13 @@ export function Latest() {
 	const handleSubmit = async (e) => {
 		e.preventDefault();
 
-		// Allow any authenticated user to create posts for demo purposes
 		if (!user) {
 			toast.error("Please login to create posts");
+			return;
+		}
+
+		if (!user.isAdmin) {
+			toast.error("Only admins can create posts");
 			return;
 		}
 
@@ -112,9 +116,22 @@ export function Latest() {
 		setImagePreview(null);
 	};
 
-	const handleDeletePost = (postId) => {
-		// Allow any authenticated user to delete posts for demo purposes
-		toast.success("Post deleted successfully!");
+	const handleDeletePost = async (postId) => {
+		if (!user?.isAdmin) {
+			toast.error("Only admins can delete posts");
+			return;
+		}
+
+		try {
+			await apiService.request(`/posts/${postId}`, {
+				method: 'DELETE'
+			});
+			await fetchPosts(); // Refresh the posts list
+			toast.success("Post deleted successfully!");
+		} catch (error) {
+			console.error('Failed to delete post:', error);
+			toast.error(`Failed to delete post: ${error.message}`);
+		}
 	};
 
 	return (

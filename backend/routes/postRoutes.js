@@ -10,12 +10,9 @@ const router = express.Router();
 // Create a new post (Admin only)
 router.post("/", authenticateToken, upload.single('media'), async (req, res) => {
 	try {
-		// Allow both admin users and users with admin role
-		// Allow any authenticated user to create posts for demo purposes
-		// In production, uncomment the line below:
-		// if (req.user.role !== "admin" && req.user.role !== "president" && req.user.role !== "student_din" && !req.user.isAdmin) {
-		//   return res.status(403).json({ message: "Admin access required" });
-		// }
+		if (!req.user.isAdmin && req.user.role !== "admin") {
+			return res.status(403).json({ message: "Admin access required" });
+		}
 
 		const {
 			type,
@@ -77,7 +74,7 @@ router.get("/:id", async (req, res) => {
 // Update post (Admin only)
 router.put("/:id", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 
@@ -100,7 +97,7 @@ router.put("/:id", authenticateToken, async (req, res) => {
 // Delete post (Admin only)
 router.delete("/:id", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 

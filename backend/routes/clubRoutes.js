@@ -10,11 +10,9 @@ const router = express.Router();
 // Create a new club (Admin only)
 router.post("/", authenticateToken, upload.single('clubImage'), async (req, res) => {
 	try {
-		// Allow any authenticated user to create clubs for demo purposes
-		// In production, uncomment the line below:
-		// if (req.user.role !== "admin" && req.user.role !== "clubs_associations" && !req.user.isAdmin) {
-		//   return res.status(403).json({ message: "Admin access required" });
-		// }
+		if (!req.user.isAdmin && req.user.role !== "admin") {
+			return res.status(403).json({ message: "Admin access required" });
+		}
 
 		const { name, category, description, founded } = req.body;
 		
@@ -116,7 +114,7 @@ router.post("/:id/join", authenticateToken, async (req, res) => {
 // Approve/Reject join request (Admin only)
 router.patch("/:clubId/join-requests/:requestId", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && req.user.role !== "clubs_associations" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 
@@ -204,7 +202,7 @@ router.post("/:id/posts", authenticateToken, async (req, res) => {
 		}
 
 		// Check if user is a member or admin
-		if (!club.members.includes(req.user._id) && req.user.role !== "admin") {
+		if (!club.members.includes(req.user._id || req.user.id) && !req.user.isAdmin) {
 			return res.status(403).json({ message: "You must be a member to post" });
 		}
 
@@ -212,13 +210,32 @@ router.post("/:id/posts", authenticateToken, async (req, res) => {
 			title,
 			content,
 			image,
-			author: req.user._id,
+			author: req.user._id || req.user.id,
 		});
 
 		await club.save();
 		await club.populate("posts.author", "name");
 		
 		res.status(201).json({ message: "Post created successfully", club });
+	} catch (err) {
+		res.status(500).json({ message: err.message });
+	}
+});
+
+// Delete club (Admin only)
+router.delete("/:id", authenticateToken, async (req, res) => {
+	try {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
+			return res.status(403).json({ message: "Admin access required" });
+		}
+
+		const club = await Club.findById(req.params.id);
+		if (!club) {
+			return res.status(404).json({ message: "Club not found" });
+		}
+
+		await Club.findByIdAndDelete(req.params.id);
+		res.status(200).json({ message: "Club deleted successfully" });
 	} catch (err) {
 		res.status(500).json({ message: err.message });
 	}

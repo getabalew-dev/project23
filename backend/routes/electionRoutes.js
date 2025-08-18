@@ -11,11 +11,9 @@ const router = express.Router();
 // Create a new election (Admin only)
 router.post("/", authenticateToken, upload.array('candidateImages', 10), async (req, res) => {
 	try {
-		// Allow any authenticated user to create elections for demo purposes
-		// In production, uncomment the line below:
-		// if (req.user.role !== "admin" && req.user.role !== "president" && !req.user.isAdmin) {
-		//   return res.status(403).json({ message: "Admin access required" });
-		// }
+		if (!req.user.isAdmin && req.user.role !== "admin") {
+			return res.status(403).json({ message: "Admin access required" });
+		}
 
 		const { title, description, startDate, endDate, eligibleVoters } = req.body;
 		let { candidates } = req.body;
@@ -43,7 +41,7 @@ router.post("/", authenticateToken, upload.array('candidateImages', 10), async (
 			return {
 				...candidate,
 				votes: 0,
-				id: `candidate_${Date.now()}_${index}`,
+				_id: new Date().getTime().toString() + index,
 				profileImage: imageFile ? `/uploads/${imageFile.filename}` : candidate.profileImage || 'https://images.pexels.com/photos/2182970/pexels-photo-2182970.jpeg?auto=compress&cs=tinysrgb&w=400'
 			};
 		});
@@ -55,7 +53,7 @@ router.post("/", authenticateToken, upload.array('candidateImages', 10), async (
 			endDate: new Date(endDate),
 			candidates: processedCandidates,
 			eligibleVoters: eligibleVoters || 12547,
-			createdBy: req.user._id || req.user.id,
+			createdBy: req.user._id || req.user.id || "admin_001",
 			totalVotes: 0,
 			voters: [],
 			status: new Date(startDate) <= new Date() ? "Ongoing" : "Pending"
@@ -115,7 +113,8 @@ router.post("/:id/vote", authenticateToken, async (req, res) => {
 		}
 
 		// Check if user has already voted
-		if (election.voters.includes(req.user._id)) {
+		const userId = req.user._id || req.user.id;
+		if (election.voters.includes(userId)) {
 			return res.status(400).json({ message: "You have already voted in this election" });
 		}
 
@@ -127,14 +126,16 @@ router.post("/:id/vote", authenticateToken, async (req, res) => {
 
 		candidate.votes += 1;
 		election.totalVotes += 1;
-		election.voters.push(req.user._id);
+		election.voters.push(userId);
 
 		await election.save();
 
 		// Update user's voted elections
-		await User.findByIdAndUpdate(req.user._id, {
-			$push: { votedElections: election._id }
-		});
+		if (!userId.startsWith('demo_') && !userId.startsWith('admin_')) {
+			await User.findByIdAndUpdate(userId, {
+				$push: { votedElections: election._id }
+			});
+		}
 
 		res.status(200).json({ message: "Vote cast successfully" });
 	} catch (err) {
@@ -145,7 +146,7 @@ router.post("/:id/vote", authenticateToken, async (req, res) => {
 // Update election status (Admin only)
 router.patch("/:id/status", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 
@@ -168,7 +169,7 @@ router.patch("/:id/status", authenticateToken, async (req, res) => {
 // Announce election results (Admin only)
 router.post("/:id/announce", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 
@@ -200,7 +201,7 @@ router.post("/:id/announce", authenticateToken, async (req, res) => {
 // Delete election (Admin only)
 router.delete("/:id", authenticateToken, async (req, res) => {
 	try {
-		if (req.user.role !== "admin" && !req.user.isAdmin) {
+		if (!req.user.isAdmin && req.user.role !== "admin") {
 			return res.status(403).json({ message: "Admin access required" });
 		}
 

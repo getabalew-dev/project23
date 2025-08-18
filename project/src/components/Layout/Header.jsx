@@ -16,20 +16,22 @@ export function Header() {
 		navigate("/");
 	};
 
-	const navigation = [
+	// Show public navigation only when not logged in
+	const publicNavigation = !user ? [
 		{ nameall: "Home", href: "/" },
 		{ nameall: "About", href: "/about" },
 		{ nameall: "Contact", href: "/contact" },
-	];
+	] : [];
 
-	const protectedNavigation = [
+	// Show protected navigation only when logged in
+	const protectedNavigation = user ? [
 		{ name: "Dashboard", href: "/dashboard" },
 		{ name: "Clubs", href: "/clubs" },
 		{ name: "Elections", href: "/elections" },
 		{ name: "Services", href: "/services" },
 		{ name: "Latest", href: "/latest" },
 		{ name: "Complaints", href: "/complaints" },
-	];
+	] : [];
 
 	return (
 		<header className="bg-white shadow-sm border-b border-gray-200">
@@ -84,7 +86,7 @@ export function Header() {
 				<div className="flex justify-between items-center py-4">
 					{/* Desktop Navigation */}
 					<nav className="hidden md:flex space-x-8">
-						{navigation.map((item) => (
+						{publicNavigation.map((item) => (
 							<Link
 								key={item.nameall}
 								to={item.href}
@@ -92,15 +94,14 @@ export function Header() {
 								{item.nameall}
 							</Link>
 						))}
-						{user &&
-							protectedNavigation.map((item) => (
-								<Link
-									key={item.name}
-									to={item.href}
-									className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
-									{item.name}
-								</Link>
-							))}
+						{protectedNavigation.map((item) => (
+							<Link
+								key={item.name}
+								to={item.href}
+								className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+								{item.name}
+							</Link>
+						))}
 					</nav>
 
 					{/* User Menu */}
@@ -157,7 +158,7 @@ export function Header() {
 			{isMenuOpen && (
 				<div className="md:hidden bg-white border-t border-gray-200">
 					<div className="px-4 py-2 space-y-1">
-						{navigation.map((item) => (
+						{publicNavigation.map((item) => (
 							<Link
 								key={item.nameall}
 								to={item.href}
@@ -166,16 +167,15 @@ export function Header() {
 								{item.nameall}
 							</Link>
 						))}
-						{user &&
-							protectedNavigation.map((item) => (
-								<Link
-									key={item.name}
-									to={item.href}
-									className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
-									onClick={() => setIsMenuOpen(false)}>
-									{item.name}
-								</Link>
-							))}
+						{protectedNavigation.map((item) => (
+							<Link
+								key={item.name}
+								to={item.href}
+								className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+								onClick={() => setIsMenuOpen(false)}>
+								{item.name}
+							</Link>
+						))}
 					</div>
 				</div>
 			)}

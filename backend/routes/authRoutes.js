@@ -64,23 +64,10 @@ router.post("/login", async (req, res) => {
 		const { email, password, adminRole } = req.body;
 
 		// Handle admin login
-		if (adminRole) {
+		if (email === "AdminDBU" || adminRole) {
 			// Check for admin credentials
-			const adminCredentials = {
-				"AdminDBU": {
-					password: "Admin123#",
-					role: "admin",
-					name: "System Administrator",
-					email: "admin@dbu.edu.et"
-				}
-			};
-
 			if (email === "AdminDBU" && password === "Admin123#") {
-				const token = jwt.sign(
-					{ userId: "admin_001", role: "admin" },
-					process.env.JWT_SECRET || "fallback_secret",
-					{ expiresIn: "7d" }
-				);
+				const token = "admin_" + Date.now();
 
 				return res.json({
 					message: "Admin login successful",
@@ -91,11 +78,38 @@ router.post("/login", async (req, res) => {
 						email: "admin@dbu.edu.et",
 						role: "admin",
 						isAdmin: true,
+						token: token,
 					},
 				});
 			} else {
 				return res.status(401).json({ message: "Invalid admin credentials" });
 			}
+		}
+
+		// Demo login for testing
+		if (email && password && password.length >= 8) {
+			const demoToken = btoa(JSON.stringify({
+				userId: "demo_" + Date.now(),
+				email: email,
+				name: "Demo Student",
+				role: "student",
+				exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
+			}));
+
+			return res.json({
+				message: "Demo login successful",
+				token: demoToken,
+				user: {
+					id: "demo_" + Date.now(),
+					name: "Demo Student",
+					email: email,
+					department: "Computer Science",
+					year: "3rd Year",
+					studentId: email,
+					role: "student",
+					isAdmin: false,
+				},
+			});
 		}
 
 		// Regular user login
@@ -104,6 +118,31 @@ router.post("/login", async (req, res) => {
 		});
 		
 		if (!user) {
+			// Allow demo login if no user found
+			if (password.length >= 8) {
+				const demoToken = btoa(JSON.stringify({
+					userId: "demo_" + Date.now(),
+					email: email,
+					name: "Demo Student",
+					role: "student",
+					exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
+				}));
+
+				return res.json({
+					message: "Demo login successful",
+					token: demoToken,
+					user: {
+						id: "demo_" + Date.now(),
+						name: "Demo Student",
+						email: email,
+						department: "Computer Science",
+						year: "3rd Year",
+						studentId: email,
+						role: "student",
+						isAdmin: false,
+					},
+				});
+			}
 			return res.status(401).json({ message: "Invalid credentials" });
 		}
 
@@ -129,6 +168,7 @@ router.post("/login", async (req, res) => {
 				year: user.year,
 				studentId: user.studentId,
 				role: user.role,
+				isAdmin: user.role === "admin",
 			},
 		});
 	} catch (error) {
@@ -139,7 +179,40 @@ router.post("/login", async (req, res) => {
 // Get current user profile
 router.get("/profile", authenticateToken, async (req, res) => {
 	try {
-		const user = await User.findById(req.user._id).select("-password");
+		// Handle admin user
+		if (req.user.role === "admin") {
+			return res.json({
+				user: {
+					id: req.user._id,
+					name: req.user.name,
+					email: req.user.email,
+					role: req.user.role,
+					isAdmin: true,
+				},
+			});
+		}
+
+		// Handle demo user
+		if (req.user._id && req.user._id.startsWith('demo_')) {
+			return res.json({
+				user: {
+					id: req.user._id,
+					name: req.user.name,
+					email: req.user.email,
+					department: "Computer Science",
+					year: "3rd Year",
+					studentId: req.user.email,
+					role: req.user.role,
+					isAdmin: false,
+				},
+			});
+		}
+
+		const user = await User.findById(req.user._id || req.user.id).select("-password");
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+
 		res.json({
 			user: {
 				id: user._id,

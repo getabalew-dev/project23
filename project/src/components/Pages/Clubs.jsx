@@ -53,13 +53,37 @@ export function Clubs() {
       toast.error("Please login to join clubs");
       return;
     }
-    toast.success("Successfully joined the club!");
+    
+    // Submit join request
+    const submitJoinRequest = async () => {
+      try {
+        await apiService.request(`/clubs/${clubId}/join`, {
+          method: 'POST',
+          body: {
+            department: user.department || "Computer Science",
+            year: user.year || "3rd Year",
+            reason: "I would like to join this club to participate in activities and contribute to the community."
+          }
+        });
+        toast.success("Join request submitted successfully!");
+      } catch (error) {
+        console.error('Failed to join club:', error);
+        toast.error(`Failed to join club: ${error.message}`);
+      }
+    };
+    
+    submitJoinRequest();
   };
 
   const handleCreateClub = async (e) => {
     e.preventDefault();
     if (!user) {
       toast.error("Please login to create clubs");
+      return;
+    }
+
+    if (!user.isAdmin) {
+      toast.error("Only admins can create clubs");
       return;
     }
 
@@ -75,9 +99,22 @@ export function Clubs() {
     }
   };
 
-  const handleDeleteClub = (clubId) => {
-    // Allow any authenticated user to delete clubs for demo purposes
-    toast.success("Club deleted successfully!");
+  const handleDeleteClub = async (clubId) => {
+    if (!user?.isAdmin) {
+      toast.error("Only admins can delete clubs");
+      return;
+    }
+
+    try {
+      await apiService.request(`/clubs/${clubId}`, {
+        method: 'DELETE'
+      });
+      await fetchClubs(); // Refresh the clubs list
+      toast.success("Club deleted successfully!");
+    } catch (error) {
+      console.error('Failed to delete club:', error);
+      toast.error(`Failed to delete club: ${error.message}`);
+    }
   };
 
   return (
@@ -102,7 +139,7 @@ export function Clubs() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Admin Controls */}
-        {user && (
+        {user?.isAdmin && (
           <div className="mb-8 bg-white rounded-xl p-6 shadow-sm">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Create New Club</h2>
