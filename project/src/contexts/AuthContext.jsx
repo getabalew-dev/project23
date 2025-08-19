@@ -68,14 +68,15 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      // Admin login
-      if (email === "AdminDBU" && password === "Admin123#") {
+      // Admin login - check credentials first
+      if ((email === "AdminDBU" || adminRole === "admin") && password === "Admin123#") {
         if (backendStatus === 'connected') {
           try {
             const response = await apiService.login({ 
-              email, 
+              username: email,
+              email: email, 
               password, 
-              adminRole: "admin" 
+              adminRole: adminRole || "admin" 
             });
             
             const adminUser = {
@@ -84,7 +85,6 @@ export const AuthProvider = ({ children }) => {
               isAdmin: true,
             };
 
-            // Find matching credential for permissions
             const credential = adminCredentials.find(cred => cred.role === "president");
             
             setUser(adminUser);
@@ -94,16 +94,11 @@ export const AuthProvider = ({ children }) => {
             
             return adminUser;
           } catch (error) {
-            throw new Error("Invalid admin credentials");
+            console.error("Admin login error:", error);
+            throw new Error(error.message || "Invalid admin credentials");
           }
         } else {
           // Offline admin login
-          const response = await apiService.login({ 
-            email, 
-            password, 
-            adminRole: "admin" 
-          });
-          
           const adminUser = {
             id: "admin_001",
             name: "System Administrator",
@@ -113,11 +108,11 @@ export const AuthProvider = ({ children }) => {
             token: btoa(JSON.stringify({
               userId: "admin_001",
               role: "admin",
+              isAdmin: true,
               exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
             })),
           };
 
-          // Find matching credential for permissions
           const credential = adminCredentials.find(cred => cred.role === "president");
           
           setUser(adminUser);
@@ -129,11 +124,20 @@ export const AuthProvider = ({ children }) => {
         }
       }
 
+      // Check for invalid admin credentials
+      if ((email === "AdminDBU" || adminRole === "admin") && password !== "Admin123#") {
+        throw new Error("Invalid admin credentials. Use AdminDBU / Admin123#");
+      }
+
       // Real student login via API
       if (email && password) {
         if (backendStatus === 'connected') {
           try {
-            const response = await apiService.login({ email, password });
+            const response = await apiService.login({ 
+              username: email,
+              email: email, 
+              password 
+            });
             const studentUser = {
               ...response.user,
               token: response.token,
@@ -145,11 +149,11 @@ export const AuthProvider = ({ children }) => {
             
             return studentUser;
           } catch (error) {
+            console.error("Student login error:", error);
             throw error;
           }
         } else {
           // Offline mode - create demo user
-          const response = await apiService.login({ email, password });
           const studentUser = {
             id: "demo_" + Date.now(),
             name: "Demo Student",
@@ -176,6 +180,7 @@ export const AuthProvider = ({ children }) => {
 
       throw new Error("Invalid credentials");
     } catch (error) {
+      console.error("Login error:", error);
       throw error;
     } finally {
       setLoading(false);

@@ -73,6 +73,7 @@ class ApiService {
 
   // Auth endpoints
   async login(credentials) {
+    console.log('API login attempt:', credentials);
     return this.request('/auth/login', {
       method: 'POST',
       body: credentials,

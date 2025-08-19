@@ -61,40 +61,83 @@ router.post("/register", async (req, res) => {
 // Login
 router.post("/login", async (req, res) => {
 	try {
-		const { email, password, adminRole } = req.body;
+		const { email, password, username, adminRole } = req.body;
+
+		console.log("Login attempt:", { email, username, adminRole });
 
 		// Handle admin login
-		if (email === "AdminDBU" || adminRole) {
+		if ((email === "AdminDBU" || username === "AdminDBU") && password === "Admin123#") {
 			// Check for admin credentials
-			if (email === "AdminDBU" && password === "Admin123#") {
-				const token = "admin_" + Date.now();
+			const token = jwt.sign(
+				{ userId: "admin_001", role: "admin", isAdmin: true },
+				process.env.JWT_SECRET || "fallback_secret",
+				{ expiresIn: "7d" }
+			);
 
-				return res.json({
-					message: "Admin login successful",
-					token,
-					user: {
-						id: "admin_001",
-						name: "System Administrator",
-						email: "admin@dbu.edu.et",
-						role: "admin",
-						isAdmin: true,
-						token: token,
-					},
-				});
-			} else {
-				return res.status(401).json({ message: "Invalid admin credentials" });
-			}
+			return res.json({
+				message: "Admin login successful",
+				token,
+				user: {
+					id: "admin_001",
+					name: "System Administrator",
+					email: "admin@dbu.edu.et",
+					role: "admin",
+					isAdmin: true,
+				},
+			});
 		}
 
-		// Demo login for testing
-		if (email && password && password.length >= 8) {
-			const demoToken = btoa(JSON.stringify({
-				userId: "demo_" + Date.now(),
-				email: email,
-				name: "Demo Student",
-				role: "student",
-				exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
-			}));
+		// Handle admin login failure
+		if ((email === "AdminDBU" || username === "AdminDBU") && password !== "Admin123#") {
+			return res.status(401).json({ message: "Invalid admin credentials" });
+		}
+
+		// Regular user login - try to find user first
+		const loginField = email || username;
+		const user = await User.findOne({ 
+			$or: [{ email: loginField }, { studentId: loginField }] 
+		});
+		
+		if (user) {
+			// Existing user login
+			const isPasswordValid = await user.comparePassword(password);
+			if (!isPasswordValid) {
+				return res.status(401).json({ message: "Invalid credentials" });
+			}
+
+			const token = jwt.sign(
+				{ userId: user._id },
+				process.env.JWT_SECRET || "fallback_secret",
+				{ expiresIn: "7d" }
+			);
+
+			return res.json({
+				message: "Login successful",
+				token,
+				user: {
+					id: user._id,
+					name: user.name,
+					email: user.email,
+					department: user.department,
+					year: user.year,
+					studentId: user.studentId,
+					role: user.role,
+					isAdmin: user.role === "admin",
+				},
+			});
+		}
+
+		// If no user found and password is valid, create demo user
+		if (password.length >= 8) {
+			const demoToken = jwt.sign(
+				{ 
+					userId: "demo_" + Date.now(),
+					email: loginField,
+					role: "student"
+				},
+				process.env.JWT_SECRET || "fallback_secret",
+				{ expiresIn: "7d" }
+			);
 
 			return res.json({
 				message: "Demo login successful",
@@ -102,76 +145,19 @@ router.post("/login", async (req, res) => {
 				user: {
 					id: "demo_" + Date.now(),
 					name: "Demo Student",
-					email: email,
+					email: loginField,
 					department: "Computer Science",
 					year: "3rd Year",
-					studentId: email,
+					studentId: loginField,
 					role: "student",
 					isAdmin: false,
 				},
 			});
 		}
 
-		// Regular user login
-		const user = await User.findOne({ 
-			$or: [{ email }, { studentId: email }] 
-		});
-		
-		if (!user) {
-			// Allow demo login if no user found
-			if (password.length >= 8) {
-				const demoToken = btoa(JSON.stringify({
-					userId: "demo_" + Date.now(),
-					email: email,
-					name: "Demo Student",
-					role: "student",
-					exp: Date.now() + (7 * 24 * 60 * 60 * 1000)
-				}));
-
-				return res.json({
-					message: "Demo login successful",
-					token: demoToken,
-					user: {
-						id: "demo_" + Date.now(),
-						name: "Demo Student",
-						email: email,
-						department: "Computer Science",
-						year: "3rd Year",
-						studentId: email,
-						role: "student",
-						isAdmin: false,
-					},
-				});
-			}
-			return res.status(401).json({ message: "Invalid credentials" });
-		}
-
-		const isPasswordValid = await user.comparePassword(password);
-		if (!isPasswordValid) {
-			return res.status(401).json({ message: "Invalid credentials" });
-		}
-
-		const token = jwt.sign(
-			{ userId: user._id },
-			process.env.JWT_SECRET || "fallback_secret",
-			{ expiresIn: "7d" }
-		);
-
-		res.json({
-			message: "Login successful",
-			token,
-			user: {
-				id: user._id,
-				name: user.name,
-				email: user.email,
-				department: user.department,
-				year: user.year,
-				studentId: user.studentId,
-				role: user.role,
-				isAdmin: user.role === "admin",
-			},
-		});
+		return res.status(401).json({ message: "Invalid credentials" });
 	} catch (error) {
+		console.error("Login error:", error);
 		res.status(500).json({ message: error.message });
 	}
 });

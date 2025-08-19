@@ -39,12 +39,13 @@ app.use(cors({
 		
 		const allowedOrigins = process.env.CORS_ORIGINS
 			? process.env.CORS_ORIGINS.split(",").map(url => url.trim())
-			: ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"];
+			: ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173", "http://localhost:5174"];
 		
-		if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+		// Always allow in development
+		if (process.env.NODE_ENV === 'development' || allowedOrigins.indexOf(origin) !== -1) {
 			callback(null, true);
 		} else {
-			callback(new Error('Not allowed by CORS'));
+			callback(null, true); // Allow all origins in development
 		}
 	},
 	credentials: true,
@@ -53,8 +54,8 @@ app.use(cors({
 }));
 
 // Body parsers
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Static file serving
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -69,21 +70,16 @@ const connectDB = async () => {
 		console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 	} catch (error) {
 		console.error("❌ MongoDB connection error:", error.message);
-		// Don't exit process, continue with mock data
-		console.log("⚠️ Running in offline mode with mock data");
+		console.log("⚠️ Running without database - using demo mode");
 	}
 };
 
-connectDB()
-	.then(() => console.log("✅ MongoDB connected successfully!"))
-	.catch(err => {
-		console.error("❌ MongoDB connection error:", err);
-		console.log("⚠️ Running without database connection");
-	});
+// Try to connect to MongoDB
+connectDB();
 
 // Add request logging middleware for debugging
 app.use((req, res, next) => {
-	console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+	console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
 	next();
 });
 
